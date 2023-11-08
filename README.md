@@ -6,6 +6,7 @@ This project is the basis and we can add in the future more commands or other ut
 ## Features
 
 - **Order and Clean List**: Sort and remove duplicates from a list, preparing clean, orderly data.
+- **Remove Duplicates**: Remove duplicate entries from a list, ensuring each item is unique.
 - **Convert to Comma-Separated Values**: Transform a list into a single line of comma-separated values.
 - **Convert to Quoted Comma-Separated Values**: Convert a list into a single line of comma-separated values, with each item enclosed in quotes.
 - **Convert Comma-Separated Values to Lines**: Turn a string of comma-separated values into individual lines.
@@ -23,6 +24,7 @@ This project is the basis and we can add in the future more commands or other ut
 Use the Command Palette `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac) to access the following commands:
 
 - **LIST: Order and Clean List**: Arrange a list in a clean, ordered format.
+- **LIST: Remove Duplicates**: Remove any duplicate lines from your list.
 - **LIST: Convert to Comma Separated Values**: Take multiple lines and join them into one line separated by commas.
 - **LIST: Convert to Quoted Comma Separated Values**: Convert lines into a comma-separated list, with each item quoted.
 - **LIST: Convert Comma Separated Values to Lines**: Split a comma-separated string back into individual lines.

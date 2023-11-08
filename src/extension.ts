@@ -150,6 +150,18 @@ export class ToSqlLikeTransformation extends BaseTransformation {
     }
 }
 
+export class RemoveDuplicatesOnListTransformation extends BaseTransformation {
+    
+    /**
+     * Transforms the input string by removing duplicate lines.
+     * @param {string} input - The input string containing potential duplicate lines.
+     * @returns {string} A string with duplicates removed, preserving the order of appearance.
+     */
+    transform(input: string): string {
+        const uniqueLines = new Set(input.split(/\r?\n/).map(line => this.sanitizeLine(line)));
+        return Array.from(uniqueLines).join('\n');
+    }
+}
 
 /**
  * Applies a given text transformation to the currently selected text in the editor, or the whole document if nothing is selected.
@@ -196,6 +208,10 @@ export function activate(context: vscode.ExtensionContext) {
             vscode.window.showErrorMessage('You must provide a column key, select a valid database type, and choose a conjunction for the SQL LIKE command.');
         }
     }));
+
+    disposableCommands.push(vscode.commands.registerCommand('extension.removeDuplicatesOnList', () => {
+        transformText(new RemoveDuplicatesOnListTransformation());
+    }));  
 
     context.subscriptions.push(...disposableCommands);
 }

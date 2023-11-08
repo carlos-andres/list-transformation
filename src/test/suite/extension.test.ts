@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { OrderAndCleanListTransformation, ToCommaSeparatedTransformation, ToQuotedCommaSeparatedTransformation, CommaSeparatedToLinesTransformation, ToSqlLikeTransformation } from '../../extension'; // Update the import path according to your project structure.
+import { OrderAndCleanListTransformation, ToCommaSeparatedTransformation, ToQuotedCommaSeparatedTransformation, CommaSeparatedToLinesTransformation, ToSqlLikeTransformation, RemoveDuplicatesOnListTransformation } from '../../extension'; 
 
 suite('Extension Test Suite', () => {
     test('OrderAndCleanListTransformation should order and clean a list', () => {
@@ -36,5 +36,13 @@ suite('Extension Test Suite', () => {
 		const expected = "`fruit` LIKE '%banana%' OR\n`fruit` LIKE '%apple%' OR\n`fruit` LIKE '%orange%'";
 		assert.strictEqual(transformation.transform(input), expected);
 	});
+
+    test('RemoveDuplicatesOnListTransformation should remove duplicate lines', () => {
+        const transformation = new RemoveDuplicatesOnListTransformation();
+        const input = 'apple\norange\nbanana\napple\nbanana\ngrape';
+        const expected = 'apple\norange\nbanana\ngrape'; // The expected result after removing duplicates.
+        const actual = transformation.transform(input);
+        assert.strictEqual(actual, expected);
+    });
 });
 
