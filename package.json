@@ -3,7 +3,7 @@
   "publisher": "calo",
   "displayName": "List Transformation",
   "description": "List Transformation commands tailored for developers working with lists of strings, especially in the context of preparing data for databases or data processing scripts.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "engines": {
     "vscode": "^1.84.0"
   },
@@ -33,6 +33,10 @@
       {
         "command": "extension.listToSqlLike",
         "title": "LIST: Convert List to SQL LIKE Clauses"
+      },
+      {
+        "command": "extension.removeDuplicatesOnList",
+        "title": "LIST: Remove Duplicates"
       }
     ]
   },

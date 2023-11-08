@@ -2,7 +2,11 @@
 
 All notable changes to the "List Transformation" extension will be documented in this file.
 
-## [1.0.0] - 2023-11-07
+## [0.2.0]
+
+- `RemoveDuplicatesOnListTransformation` command which removes duplicate lines from a list while maintaining the order.
+
+## [0.1.0]
 
 ### Added
 
