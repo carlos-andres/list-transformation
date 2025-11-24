@@ -3,9 +3,9 @@
   "publisher": "calo",
   "displayName": "List Transformation",
   "description": "List Transformation commands tailored for developers working with lists of strings, especially in the context of preparing data for databases or data processing scripts.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "engines": {
-    "vscode": "^1.84.0"
+    "vscode": "^1.106.0"
   },
   "categories": [
     "Other"
@@ -53,15 +53,15 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@types/vscode": "^1.84.0",
-    "@types/mocha": "^10.0.2",
-    "@types/node": "18.x",
-    "@typescript-eslint/eslint-plugin": "^6.7.3",
-    "@typescript-eslint/parser": "^6.7.3",
-    "eslint": "^8.50.0",
-    "glob": "^10.3.3",
-    "mocha": "^10.2.0",
-    "typescript": "^5.2.2",
-    "@vscode/test-electron": "^2.3.4"
+    "@types/vscode": "^1.106.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.57.0",
+    "glob": "^10.5.0",
+    "mocha": "^10.8.0",
+    "typescript": "^5.9.0",
+    "@vscode/test-electron": "^2.5.0"
   }
 }

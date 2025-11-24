@@ -1,0 +1,35 @@
+# Development files
+.vscode/**
+.vscode-test/**
+.gitignore
+.git/**
+
+# Build configuration
+.eslintrc.json
+tsconfig.json
+
+# Dependencies
+node_modules/**
+
+# Source files (only ship compiled code)
+src/**
+
+# Test files
+out/test/**
+
+# Source maps (optional - remove if you want debugging support)
+**/*.map
+
+# Build artifacts
+*.vsix
+
+# Scripts and documentation
+clean.sh
+PUBLISHING.md
+CLAUDE.md
+
+# macOS files
+.DS_Store
+
+# Claude Code settings
+.claude/**

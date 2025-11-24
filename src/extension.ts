@@ -10,7 +10,7 @@ class BaseTransformation implements TextTransformation {
      * @param {string} input - The input text to transform.
      * @throws Will throw an error if the method is not implemented.
      */
-    transform(input: string): string {
+    transform(_input: string): string {
         throw new Error('Method not implemented.');
     }
 
@@ -183,7 +183,7 @@ function transformText(transformation: TextTransformation): void {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-    let disposableCommands: vscode.Disposable[] = [];
+    const disposableCommands: vscode.Disposable[] = [];
     disposableCommands.push(vscode.commands.registerCommand('extension.orderAndCleanList', () => {
         transformText(new OrderAndCleanListTransformation());
     }));
