@@ -2,6 +2,17 @@
 
 All notable changes to the "List Transformation" extension will be documented in this file.
 
+## [0.3.0]
+
+### Changed
+
+- Updated all dependencies to latest versions
+- Upgraded to Node.js 22 LTS support
+- Updated TypeScript to 5.9.3
+- Updated ESLint and TypeScript ESLint to latest versions
+- Added `skipLibCheck` to TypeScript configuration for better compatibility
+
+
 ## [0.2.0]
 
 - `RemoveDuplicatesOnListTransformation` command which removes duplicate lines from a list while maintaining the order.
