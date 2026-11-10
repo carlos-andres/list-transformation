@@ -1,0 +1,181 @@
+body {
+    padding: 8px 10px;
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    color: var(--vscode-foreground);
+}
+
+::selection {
+    background: var(--vscode-editor-selectionBackground);
+}
+
+.actions {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 6px;
+}
+
+.action {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    min-height: 32px;
+    border: 1px solid var(--vscode-contrastBorder, transparent);
+    border-radius: 6px;
+    font: inherit;
+    line-height: 1.35;
+    text-align: left;
+    text-wrap: pretty;
+    cursor: pointer;
+    user-select: none;
+    background-color: color-mix(in srgb, var(--vscode-foreground) 6%, transparent);
+    background-image: linear-gradient(var(--vscode-button-secondaryBackground), var(--vscode-button-secondaryBackground));
+    color: var(--vscode-button-secondaryForeground);
+    transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+
+.action:hover {
+    background-image: linear-gradient(var(--vscode-button-secondaryHoverBackground), var(--vscode-button-secondaryHoverBackground));
+}
+
+body.vscode-dark .action {
+    border-color: var(--vscode-widget-border, color-mix(in srgb, var(--vscode-foreground) 14%, transparent));
+}
+
+.action:focus-visible {
+    background: var(--vscode-list-activeSelectionBackground);
+    color: var(--vscode-list-activeSelectionForeground);
+    outline: 1px solid var(--vscode-contrastActiveBorder, var(--vscode-focusBorder));
+    outline-offset: -1px;
+}
+
+.action:active {
+    background: var(--vscode-list-activeSelectionBackground);
+    color: var(--vscode-list-activeSelectionForeground);
+}
+
+.key {
+    min-width: 18px;
+    padding: 1px 4px;
+    border: 1px solid var(--vscode-keybindingLabel-border);
+    border-bottom-color: var(--vscode-keybindingLabel-bottomBorder);
+    border-radius: 3px;
+    font-family: var(--vscode-font-family);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    line-height: 16px;
+    text-align: center;
+    background: var(--vscode-keybindingLabel-background);
+    color: var(--vscode-keybindingLabel-foreground);
+}
+
+.hint,
+.sql-hint {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground);
+}
+
+.hint {
+    margin: 10px 2px 0;
+}
+
+.sql-form {
+    display: grid;
+    gap: 8px;
+    margin-top: 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-widget-border, color-mix(in srgb, var(--vscode-foreground) 14%, transparent));
+    border-radius: 6px;
+}
+
+.sql-form[hidden] {
+    display: none;
+}
+
+.field,
+.sql-form legend {
+    font-weight: 600;
+}
+
+.field-input {
+    min-width: 0;
+    padding: 4px 6px;
+    border: 1px solid var(--vscode-input-border, transparent);
+    border-radius: 2px;
+    font: inherit;
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+}
+
+.sql-form fieldset {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.sql-form legend {
+    padding: 0;
+    margin-bottom: 4px;
+}
+
+.choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.choice input {
+    margin: 0;
+    accent-color: var(--vscode-button-background);
+}
+
+.field-input:focus,
+.run:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: -1px;
+}
+
+.choice input:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: 1px;
+}
+
+.sql-run {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.run {
+    padding: 4px 14px;
+    border: 1px solid var(--vscode-button-border, transparent);
+    border-radius: 2px;
+    font: inherit;
+    cursor: pointer;
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+}
+
+.run:hover {
+    background: var(--vscode-button-hoverBackground);
+}
+
+.sql-error {
+    margin: 0;
+    color: var(--vscode-errorForeground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .action {
+        transition: none;
+    }
+}

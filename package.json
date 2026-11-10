@@ -3,15 +3,33 @@
   "publisher": "calo",
   "displayName": "List Transformation",
   "description": "List Transformation commands tailored for developers working with lists of strings, especially in the context of preparing data for databases or data processing scripts.",
-  "version": "0.3.0",
+  "version": "0.6.0",
+  "license": "MIT",
+  "icon": "media/icon.png",
   "engines": {
-    "vscode": "^1.106.0"
+    "vscode": "^1.125.0"
   },
   "categories": [
     "Other"
   ],
+  "keywords": [
+    "list",
+    "lines",
+    "csv",
+    "comma separated",
+    "sort",
+    "duplicates",
+    "sql",
+    "like"
+  ],
   "activationEvents": [],
   "main": "./out/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": true
+  },
   "contributes": {
     "commands": [
       {
@@ -38,30 +56,63 @@
         "command": "extension.removeDuplicatesOnList",
         "title": "LIST: Remove Duplicates"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "listTransformation",
+          "title": "List",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "listTransformation": [
+        {
+          "type": "webview",
+          "id": "listTransformation.panel",
+          "name": "Transformations",
+          "when": "config.listTransformation.panel.enabled"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "List Transformation",
+      "properties": {
+        "listTransformation.panel.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the List pane. It opens from the List icon in the activity bar."
+        },
+        "listTransformation.panel.numberKeys": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run a transformation by pressing its number (1–6) while the List pane has focus."
+        }
+      }
+    }
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/carlos-andres/list-transformation"
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
+    "pretest": "pnpm run compile && pnpm run lint",
+    "lint": "eslint src --max-warnings 0",
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@types/vscode": "^1.106.0",
-    "@types/mocha": "^10.0.10",
-    "@types/node": "22.x",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.21.0",
-    "eslint": "^8.57.0",
-    "glob": "^10.5.0",
-    "mocha": "^10.8.0",
-    "typescript": "^5.9.0",
-    "@vscode/test-electron": "^2.5.0"
-  }
+    "@eslint/js": "10.0.1",
+    "@types/mocha": "10.0.10",
+    "@types/node": "24.19.2",
+    "@types/vscode": "1.125.0",
+    "@vscode/test-electron": "3.1.0",
+    "eslint": "10.14.0",
+    "mocha": "12.0.3",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.1"
+  },
+  "packageManager": "pnpm@12.18.0"
 }

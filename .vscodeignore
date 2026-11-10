@@ -3,13 +3,17 @@
 .vscode-test/**
 .gitignore
 .git/**
+.envrc
+.nvmrc
 
 # Build configuration
-.eslintrc.json
+eslint.config.mjs
 tsconfig.json
 
 # Dependencies
 node_modules/**
+pnpm-lock.yaml
+pnpm-workspace.yaml
 
 # Source files (only ship compiled code)
 src/**
@@ -33,3 +37,9 @@ CLAUDE.md
 
 # Claude Code settings
 .claude/**
+
+# Local session notes
+.remember/**
+
+# README screenshots (vsce links them to the GitHub repository)
+images/**

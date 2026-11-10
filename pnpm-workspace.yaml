@@ -1,0 +1,18 @@
+# pnpm 11+ reads project settings from this file; .npmrc only holds auth/registry/TLS/proxy.
+# https://pnpm.io/settings
+
+# Dependency build scripts stay blocked; add a package to allowBuilds only after review.
+strictDepBuilds: true
+
+# Skip versions published less than 7 days ago (minutes).
+minimumReleaseAge: 10080
+
+saveExact: true
+frozenLockfile: true
+
+# minimatch via eslint and mocha's glob: dev-only, it only matches globs from our own config, and neither range takes the fix.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-g3hv-75wg-m249
+    # glob via mocha: dev-only, and our test runner never gives glob an AbortSignal.
+    - GHSA-3g3m-2fjr-6pw4
