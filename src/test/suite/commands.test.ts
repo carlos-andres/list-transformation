@@ -320,4 +320,258 @@ suite('Command Test Suite', function () {
         assert.deepStrictEqual(offered, [['mysql', 'sqlserver', 'pgsql', 'other'], ['AND', 'OR']]);
         assert.strictEqual(text, "\"col\" LIKE '%a\"b%'");
     });
+
+    suite('Remove Duplicates summary', () => {
+        const showInformationMessage = vscode.window.showInformationMessage;
+        let toasts: unknown[][] = [];
+        const setShowSummary = (value: unknown) => vscode.workspace.getConfiguration('listTransformation').update('removeDuplicates.showSummary', value, vscode.ConfigurationTarget.Global);
+
+        setup(() => {
+            toasts = [];
+            Object.assign(vscode.window, {
+                showInformationMessage: (...args: unknown[]) => {
+                    toasts.push(args);
+                    return Promise.resolve(undefined);
+                },
+            });
+        });
+
+        teardown(async () => {
+            Object.assign(vscode.window, { showInformationMessage });
+            await setShowSummary(undefined);
+        });
+
+        test('shows the counts in one Info message with no options or items', async () => {
+            const text = await runOn("apple\n\n,\napple,\n'apple'\nbanana", undefined, 'extension.removeDuplicatesOnList');
+            assert.strictEqual(text, 'apple\nbanana');
+            assert.deepStrictEqual(toasts, [['Removed 2 duplicates, 2 unique values left, empty lines dropped | Duplicates: apple']]);
+        });
+
+        test('the command still resolves true when it shows the message', async () => {
+            const document = await vscode.workspace.openTextDocument({ content: 'a\nb\na' });
+            await vscode.window.showTextDocument(document);
+            const applied = await vscode.commands.executeCommand('extension.removeDuplicatesOnList');
+            assert.strictEqual(applied, true);
+            assert.strictEqual(document.getText(), 'a\nb');
+            assert.deepStrictEqual(toasts, [['Removed 1 duplicate, 2 unique values left | Duplicates: a']]);
+        });
+
+        test('FR-018: a markdown link value does not reach the message as a link', async () => {
+            await runOn('[x](command:a)\n[x](command:a)', undefined, 'extension.removeDuplicatesOnList');
+            assert.deepStrictEqual(toasts, [['Removed 1 duplicate, 1 unique value left | Duplicates: [x] (command:a)']]);
+        });
+
+        test('FR-025: the 8-line list through Quoted CSV and then Remove Duplicates stays one quoted line with its toast', async () => {
+            const document = await vscode.workspace.openTextDocument({ content: 'apple\napple\napple\nbanana\nitem 10\nitem 2\nitem 2\ncherry' });
+            await vscode.window.showTextDocument(document);
+            assert.strictEqual(await vscode.commands.executeCommand('extension.toQuotedCommaSeparated'), true);
+            assert.strictEqual(document.getText(), "'apple', 'apple', 'apple', 'banana', 'item 10', 'item 2', 'item 2', 'cherry'");
+            assert.strictEqual(await vscode.commands.executeCommand('extension.removeDuplicatesOnList'), true);
+            assert.strictEqual(document.getText(), "'apple', 'banana', 'item 10', 'item 2', 'cherry'");
+            assert.deepStrictEqual(toasts, [['Removed 3 duplicates, 5 unique values left | Duplicates: apple, item 2']]);
+        });
+
+        test('shows nothing when no duplicate is removed', async () => {
+            const text = await runOn('a\n\n,\nb', undefined, 'extension.removeDuplicatesOnList');
+            assert.strictEqual(text, 'a\nb');
+            assert.deepStrictEqual(toasts, []);
+        });
+
+        test('shows nothing on an empty document', async () => {
+            const document = await vscode.workspace.openTextDocument({ content: '' });
+            await vscode.window.showTextDocument(document);
+            assert.strictEqual(await vscode.commands.executeCommand('extension.removeDuplicatesOnList'), true);
+            assert.deepStrictEqual(toasts, []);
+        });
+
+        test('shows nothing with the setting false', async () => {
+            await setShowSummary(false);
+            const text = await runOn('a\na', undefined, 'extension.removeDuplicatesOnList');
+            assert.strictEqual(text, 'a');
+            assert.deepStrictEqual(toasts, []);
+        });
+
+        test('shows nothing with a non-boolean setting', async () => {
+            await setShowSummary('true');
+            assert.strictEqual(vscode.workspace.getConfiguration('listTransformation').get('removeDuplicates.showSummary'), 'true');
+            const text = await runOn('a\na', undefined, 'extension.removeDuplicatesOnList');
+            assert.strictEqual(text, 'a');
+            assert.deepStrictEqual(toasts, []);
+        });
+
+        test('shows nothing with no active editor', async () => {
+            await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+            assert.strictEqual(vscode.window.activeTextEditor, undefined);
+            const applied = await vscode.commands.executeCommand('extension.removeDuplicatesOnList');
+            assert.strictEqual(applied, undefined);
+            assert.deepStrictEqual(toasts, []);
+        });
+    });
+
+    suite('Restore original list', () => {
+        const { showInformationMessage, showWarningMessage } = vscode.window;
+        let infos: unknown[][] = [];
+        let warnings: unknown[][] = [];
+        let answer: string | undefined;
+        const restore = () => vscode.commands.executeCommand('extension.restoreOriginalList');
+        const orderAndClean = () => vscode.commands.executeCommand('extension.orderAndCleanList');
+        const handEdit = (editor: vscode.TextEditor, text: string) => editor.edit(editBuilder => editBuilder.insert(new vscode.Position(0, 0), text));
+        const question = ['The document was edited after the last transformation. Restore the original list?', { modal: true, detail: 'Your edits since then will be lost. Undo brings them back.' }, 'Restore'];
+
+        async function open(content: string) {
+            const document = await vscode.workspace.openTextDocument({ content });
+            return { document, editor: await vscode.window.showTextDocument(document) };
+        }
+
+        setup(() => {
+            infos = [];
+            warnings = [];
+            answer = undefined;
+            Object.assign(vscode.window, {
+                showInformationMessage: (...args: unknown[]) => {
+                    infos.push(args);
+                    return Promise.resolve(undefined);
+                },
+                showWarningMessage: (...args: unknown[]) => {
+                    warnings.push(args);
+                    return Promise.resolve(answer);
+                },
+            });
+        });
+
+        teardown(() => {
+            Object.assign(vscode.window, { showInformationMessage, showWarningMessage });
+        });
+
+        test('FR-020: the first run starts a chain', async () => {
+            const { document } = await open('b\na');
+            assert.strictEqual(await orderAndClean(), true);
+            assert.strictEqual(await restore(), true);
+            assert.strictEqual(document.getText(), 'b\na');
+            assert.deepStrictEqual(warnings, []);
+        });
+
+        test('FR-020: the chain survives 2 runs', async () => {
+            const { document } = await open("b\n'a'\nb");
+            await orderAndClean();
+            await vscode.commands.executeCommand('extension.removeDuplicatesOnList');
+            assert.strictEqual(document.getText(), 'a\nb');
+            assert.strictEqual(await restore(), true);
+            assert.strictEqual(document.getText(), "b\n'a'\nb");
+            assert.deepStrictEqual(warnings, []);
+        });
+
+        test('FR-020: a hand edit then a run starts a new chain', async () => {
+            const { document, editor } = await open('b\na');
+            await orderAndClean();
+            await handEdit(editor, 'c\n');
+            await orderAndClean();
+            assert.strictEqual(document.getText(), 'a\nb\nc');
+            assert.strictEqual(await restore(), true);
+            assert.strictEqual(document.getText(), 'c\na\nb');
+            assert.deepStrictEqual(warnings, []);
+        });
+
+        test('FR-020: closing the document deletes the entry', async () => {
+            const uri = vscode.Uri.parse('untitled:fr020-close.txt');
+            await handEdit(await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(uri)), 'b\na');
+            await orderAndClean();
+            const closed = new Promise<void>(resolve => {
+                const listener = vscode.workspace.onDidCloseTextDocument(document => {
+                    if (document.uri.toString() === uri.toString()) {
+                        listener.dispose();
+                        resolve();
+                    }
+                });
+            });
+            await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+            await closed;
+            await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(uri));
+            assert.strictEqual(await restore(), undefined);
+            assert.deepStrictEqual(infos, [['Nothing to restore.']]);
+            assert.deepStrictEqual(warnings, []);
+        });
+
+        test('FR-021: the manifest titles the command LIST: Restore Original List', () => {
+            const manifest = vscode.extensions.getExtension('calo.list-transformation')?.packageJSON as { contributes: { commands: { command: string; title: string }[] } };
+            assert.deepStrictEqual(manifest.contributes.commands.filter(({ command }) => command === 'extension.restoreOriginalList'), [{ command: 'extension.restoreOriginalList', title: 'LIST: Restore Original List' }]);
+        });
+
+        test('FR-021: with no editor it says Nothing to restore.', async () => {
+            await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+            assert.strictEqual(await restore(), undefined);
+            assert.deepStrictEqual(infos, [['Nothing to restore.']]);
+        });
+
+        test('FR-021: with no entry it says Nothing to restore.', async () => {
+            const { document } = await open('b\na');
+            assert.strictEqual(await restore(), undefined);
+            assert.deepStrictEqual(infos, [['Nothing to restore.']]);
+            assert.strictEqual(document.getText(), 'b\na');
+        });
+
+        test('FR-021: a text equal to the original says nothing to restore and drops the entry', async () => {
+            const { document, editor } = await open('b\na');
+            await orderAndClean();
+            await vscode.commands.executeCommand('undo');
+            assert.strictEqual(document.getText(), 'b\na');
+            assert.strictEqual(await restore(), undefined);
+            await handEdit(editor, 'c\n');
+            assert.strictEqual(await restore(), undefined);
+            assert.strictEqual(document.getText(), 'c\nb\na');
+            assert.deepStrictEqual(infos, [['Nothing to restore.'], ['Nothing to restore.']]);
+            assert.deepStrictEqual(warnings, []);
+        });
+
+        test('FR-021: with the stored version it restores the whole document without a question', async () => {
+            const { document, editor } = await open('x\nb\na');
+            editor.selection = new vscode.Selection(document.positionAt(2), document.positionAt(5));
+            await orderAndClean();
+            assert.strictEqual(document.getText(), 'x\na\nb');
+            assert.strictEqual(await restore(), true);
+            assert.strictEqual(document.getText(), 'x\nb\na');
+            assert.deepStrictEqual(warnings, []);
+            assert.deepStrictEqual(infos, []);
+        });
+
+        test('FR-021: after a hand edit, Restore in the modal restores the original', async () => {
+            const { document, editor } = await open('b\na');
+            await orderAndClean();
+            await handEdit(editor, 'c\n');
+            answer = 'Restore';
+            assert.strictEqual(await restore(), true);
+            assert.strictEqual(document.getText(), 'b\na');
+            assert.deepStrictEqual(warnings, [question]);
+        });
+
+        test('FR-021: after a hand edit, closing the modal changes nothing and keeps the entry', async () => {
+            const { document, editor } = await open('b\na');
+            await orderAndClean();
+            await handEdit(editor, 'c\n');
+            assert.strictEqual(await restore(), undefined);
+            assert.strictEqual(document.getText(), 'c\na\nb');
+            answer = 'Restore';
+            assert.strictEqual(await restore(), true);
+            assert.strictEqual(document.getText(), 'b\na');
+            assert.deepStrictEqual(warnings, [question, question]);
+        });
+
+        test('FR-021: a restore drops the entry', async () => {
+            const { document } = await open('b\na');
+            await orderAndClean();
+            assert.strictEqual(await restore(), true);
+            assert.strictEqual(await restore(), undefined);
+            assert.strictEqual(document.getText(), 'b\na');
+            assert.deepStrictEqual(infos, [['Nothing to restore.']]);
+        });
+
+        test('FR-021: one undo after the restore brings back the transformed text', async () => {
+            const { document } = await open('b\na');
+            await orderAndClean();
+            await restore();
+            assert.strictEqual(document.getText(), 'b\na');
+            await vscode.commands.executeCommand('undo');
+            assert.strictEqual(document.getText(), 'a\nb');
+        });
+    });
 });

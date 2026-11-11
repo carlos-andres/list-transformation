@@ -3,7 +3,7 @@
   "publisher": "calo",
   "displayName": "List Transformation",
   "description": "List Transformation commands tailored for developers working with lists of strings, especially in the context of preparing data for databases or data processing scripts.",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "license": "MIT",
   "icon": "media/icon.png",
   "engines": {
@@ -55,6 +55,10 @@
       {
         "command": "extension.removeDuplicatesOnList",
         "title": "LIST: Remove Duplicates"
+      },
+      {
+        "command": "extension.restoreOriginalList",
+        "title": "LIST: Restore Original List"
       }
     ],
     "viewsContainers": {
@@ -88,6 +92,12 @@
           "type": "boolean",
           "default": true,
           "description": "Run a transformation by pressing its number (1–6) while the List pane has focus."
+        },
+        "listTransformation.removeDuplicates.showSummary": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "After Remove Duplicates, show a message with the number of duplicates removed and unique values left. The Enable duplicate notifications checkbox in the List pane changes this setting too."
         }
       }
     }

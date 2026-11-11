@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { allowedCommand, paneLabel, panelHtml, sqlLikeArgs, sqlLikeMessage } from '../../panel';
+import { allowedCommand, paneLabel, panelHtml, restoreCommand, showSummaryMessage, sqlLikeArgs, sqlLikeMessage } from '../../panel';
 
 const ids = [
     'extension.orderAndCleanList',
@@ -15,7 +15,7 @@ const ids = [
 
 const buttons = ids.map(id => [id, `LIST: ${id}`] as const);
 const webview = { cspSource: 'vscode-test:', asWebviewUri: (uri: vscode.Uri) => uri };
-const render = (list: readonly (readonly [string, string])[], numberKeys: unknown) => panelHtml(webview, vscode.Uri.file('/media'), list, numberKeys);
+const render = (list: readonly (readonly [string, string])[], numberKeys: unknown, showSummary: unknown = true) => panelHtml(webview, vscode.Uri.file('/media'), list, numberKeys, showSummary);
 
 class Message {
     command = 'extension.orderAndCleanList';
@@ -62,6 +62,19 @@ const rejectedMessages: [string, unknown][] = [
     ['an extra top-level key', { command: 'extension.listToSqlLike', args: validArgs, extra: 1 }],
     ['invalid args', { command: 'extension.listToSqlLike', args: { ...validArgs, dbType: 'oracle' } }],
     ['no args', { command: 'extension.listToSqlLike' }],
+];
+
+class Toggle {
+    showSummary = true;
+}
+
+const rejectedToggles: [string, unknown][] = [
+    ['an extra key', { showSummary: true, extra: 1 }],
+    ['a missing key', {}],
+    ['a non-boolean value', { showSummary: 'true' }],
+    ['a non-plain object', new Toggle()],
+    ['an array', [true]],
+    ['null', null],
 ];
 
 suite('Panel Test Suite', function () {
@@ -161,7 +174,7 @@ suite('Panel Test Suite', function () {
         assert.strictEqual((html.match(/<button [^>]*data-command=/g) ?? []).length, 6);
         assert.ok(!html.includes('<kbd'));
         assert.ok(!html.includes('aria-keyshortcuts'));
-        assert.ok(!html.includes('class="hint"'));
+        assert.ok(!html.includes('Press 1'));
     });
 
     test('panelHtml renders a non-boolean numberKeys setting as number keys off', () => {
@@ -170,9 +183,57 @@ suite('Panel Test Suite', function () {
             assert.ok(html.includes('data-number-keys="false"'));
             assert.ok(!html.includes('<kbd'));
             assert.ok(!html.includes('aria-keyshortcuts'));
-            assert.ok(!html.includes('class="hint"'));
+            assert.ok(!html.includes('Press 1'));
         }
     });
+
+    test('panelHtml renders the Enable duplicate notifications checkbox after the list and before the key hint', () => {
+        const html = render(buttons, true, true);
+        assert.match(html, /<\/ol>\s*<button type="button" id="restore">Restore original<\/button>\s*<p class="hint"><label class="choice"><input type="checkbox" id="show-summary" checked>Enable duplicate notifications<\/label><\/p>\s*<p class="hint">Press 1/);
+    });
+
+    test('FR-022: panelHtml renders Restore original after the list and before the checkbox, without data-command', () => {
+        for (const numberKeys of [true, false]) {
+            const html = render(buttons, numberKeys);
+            const button = '<button type="button" id="restore">Restore original</button>';
+            assert.strictEqual(html.split(button).length, 2);
+            assert.ok(html.indexOf('</ol>') < html.indexOf(button) && html.indexOf(button) < html.indexOf('id="show-summary"'));
+            assert.deepStrictEqual([...html.matchAll(/data-command="([^"]+)"/g)].map(([, id]) => id), ids);
+        }
+    });
+
+    test('FR-022: allowedCommand accepts the exact restore message with the ids registerPanel uses', () => {
+        assert.strictEqual(restoreCommand, 'extension.restoreOriginalList');
+        assert.strictEqual(allowedCommand({ command: 'extension.restoreOriginalList' }, [...ids, restoreCommand]), 'extension.restoreOriginalList');
+    });
+
+    test('FR-022: allowedCommand rejects the restore message with an extra key', () => {
+        assert.strictEqual(allowedCommand({ command: 'extension.restoreOriginalList', extra: 1 }, [...ids, restoreCommand]), undefined);
+    });
+
+    test('panelHtml renders the checkbox with number keys off too', () => {
+        assert.ok(render(buttons, false, true).includes('<input type="checkbox" id="show-summary" checked>Enable duplicate notifications'));
+    });
+
+    test('panelHtml checks the checkbox only for exactly true', () => {
+        for (const value of [false, 'true', 1, {}, null]) {
+            const html = render(buttons, true, value);
+            assert.ok(html.includes('<input type="checkbox" id="show-summary">Enable duplicate notifications'));
+            assert.ok(!html.includes('checkbox" id="show-summary" checked'));
+        }
+    });
+
+    for (const value of [true, false]) {
+        test(`showSummaryMessage accepts {showSummary: ${value}}`, () => {
+            assert.strictEqual(showSummaryMessage({ showSummary: value }), value);
+        });
+    }
+
+    for (const [name, message] of rejectedToggles) {
+        test(`showSummaryMessage rejects ${name}`, () => {
+            assert.strictEqual(showSummaryMessage(message), undefined);
+        });
+    }
 
     test('panelHtml escapes labels and attributes', () => {
         const html = render([['a"b', 'LIST: <b>&\'']], true);

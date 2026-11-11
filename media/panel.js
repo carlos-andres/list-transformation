@@ -28,6 +28,10 @@ for (const name of ['dbType', 'conjunction']) {
         saved.checked = true;
     }
 }
+if (state.formOpen) {
+    form.hidden = false;
+    formToggle.setAttribute('aria-expanded', 'true');
+}
 
 const values = () => ({ column: column.value, dbType: checked('dbType'), conjunction: checked('conjunction') });
 const run = () => {
@@ -41,7 +45,7 @@ const run = () => {
     vscode.postMessage({ command: formToggle.dataset.command, args: values() });
 };
 
-form.addEventListener('input', () => vscode.setState(values()));
+form.addEventListener('input', () => vscode.setState({ ...vscode.getState(), ...values() }));
 column.addEventListener('input', () => {
     error.textContent = '';
 });
@@ -52,10 +56,23 @@ column.addEventListener('keydown', event => {
     }
 });
 document.getElementById('sql-run').addEventListener('click', run);
+document.getElementById('restore').addEventListener('click', () => vscode.postMessage({ command: 'extension.restoreOriginalList' }));
+
+const summary = document.getElementById('show-summary');
+// the toggle re-renders the pane, so focus comes back through state; cleared at once so a change made in Settings does not move it
+if (state.focusSummary) {
+    summary.focus();
+    vscode.setState({ ...state, focusSummary: false });
+}
+summary.addEventListener('change', () => {
+    vscode.setState({ ...vscode.getState(), focusSummary: true });
+    vscode.postMessage({ showSummary: summary.checked });
+});
 
 function setFormOpen(open) {
     form.hidden = !open;
     formToggle.setAttribute('aria-expanded', String(open));
+    vscode.setState({ ...vscode.getState(), formOpen: open });
     if (open) {
         column.focus();
     }

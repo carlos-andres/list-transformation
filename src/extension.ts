@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { dbTypes, registerPanel, sqlLikeArgs, SqlLikeArgs } from './panel';
+import { dbTypes, registerPanel, restoreCommand, sqlLikeArgs, SqlLikeArgs } from './panel';
 
 export interface TextTransformation {
     transform(input: string): string;
@@ -31,68 +31,43 @@ abstract class BaseTransformation implements TextTransformation {
         return this.sanitizeLine(line.trim().replace(/,\s*$/, '').trim());
     }
 
-    protected cleanLines(input: string): string[] {
-        return input.split(/\r?\n/).map(line => this.cleanItem(line)).filter(line => line.trim() !== '');
+    protected cleanLines(input: string, list = this.oneLineList(input)): string[] {
+        return (list ?? input.split(/\r?\n/)).map(line => this.cleanItem(line)).filter(line => line.trim() !== '');
     }
-}
 
-const naturalOrder = new Intl.Collator(undefined, { numeric: true }).compare;
-
-export class OrderAndCleanListTransformation extends BaseTransformation {
-    /**
-     * Transforms the input text by ordering and cleaning the list.
-     * @param {string} input - The input text containing the list.
-     * @returns {string} - The ordered and cleaned list.
-     */
-    transform(input: string): string {
-        const lines = this.cleanLines(input);
-
-        return lines.sort(naturalOrder).join('\n');
-    }
-}
-
-export class ToCommaSeparatedTransformation extends BaseTransformation {
-    /**
-     * Transforms the input text into a comma-separated line.
-     * @param {string} input - The input text containing the list.
-     * @returns {string} - The comma-separated line.
-     */
-    transform(input: string): string {
-        const transformedLines = this.cleanLines(input);
-
-        return transformedLines.join(', ');
-    }
-}
-
-export class ToQuotedCommaSeparatedTransformation extends BaseTransformation {
-    /**
-     * Transforms the input text into a quoted, comma-separated line.
-     * @param {string} input - The input text containing the list.
-     * @returns {string} - The quoted, comma-separated line.
-     */
-    transform(input: string): string {
-        const transformedLines = this.cleanLines(input)
-            .map(line => `'${line}'`);
-        return transformedLines.join(', ');
-    }
-}
-
-export class CommaSeparatedToLinesTransformation extends BaseTransformation {
-    /**
-     * Transforms the input text from a comma-separated string into individual lines.
-     * @param {string} input - The input text containing the comma-separated values.
-     * @returns {string} - The text with values separated by new lines.
-     */
-    transform(input: string): string {
-        const isAlreadyLineSeparated = input.split(/\r?\n/).every(line =>
-            line.match(/^([^'",\r\n]+,?)$/)
-        );
-
-        if (isAlreadyLineSeparated) {
-            return input;
+    // A single comma-separated line, such as the output of the comma commands, is read as its values.
+    protected oneLineList(input: string): string[] | undefined {
+        const lines = input.split(/\r?\n/).filter(line => line.trim() !== '');
+        if (lines.length !== 1) {
+            return undefined;
         }
+        const line = lines[0];
+        // Only a comma followed by a blank, the separator commands 2 and 3 write, ends a value, so 1,000 stays one value.
+        const spans: [number, number][] = [];
+        let end = 0;
+        for (const token of this.tokens(line)) {
+            const start = line.indexOf(token, end);
+            end = start + token.length;
+            if (spans.length > 0 && token[0] !== ' ' && token[0] !== '\t') {
+                spans[spans.length - 1][1] = end;
+            } else {
+                spans.push([start, end]);
+            }
+        }
+        const values = spans.map(([from, to]) => line.slice(from, to).trim()).filter(value => value !== '');
+        return values.length > 1 ? values : undefined;
+    }
 
-        return this.tokens(input).map(item => item.trim()).filter(item => item !== '').join('\n');
+    protected joinLikeInput(list: string[] | undefined, values: string[]): string {
+        if (!list) {
+            return values.join('\n');
+        }
+        const quote = ["'", '"'].find(char => list.every(value => value.length > 1 && value.startsWith(char) && value.endsWith(char)));
+        if (quote) {
+            return values.map(value => `${quote}${value}${quote}`).join(', ');
+        }
+        // A value that holds the separator is quoted, so the line reads back as the same values.
+        return values.map(value => /,[ \t]/.test(value) ? (value.includes("'") ? `"${value}"` : `'${value}'`) : value).join(', ');
     }
 
     // The same tokens as input.match(/[ \t]*(["']).*?\1(?=[ \t]*(?:,|\r?\n|$))|[^,\r\n]+/g), in linear time: that regex is quadratic on unclosed quotes.
@@ -139,6 +114,67 @@ export class CommaSeparatedToLinesTransformation extends BaseTransformation {
             start = end;
         }
         return items;
+    }
+}
+
+const naturalOrder = new Intl.Collator(undefined, { numeric: true }).compare;
+
+export class OrderAndCleanListTransformation extends BaseTransformation {
+    /**
+     * Transforms the input text by ordering and cleaning the list.
+     * @param {string} input - The input text containing the list.
+     * @returns {string} - The ordered and cleaned list.
+     */
+    transform(input: string): string {
+        const list = this.oneLineList(input);
+        const lines = this.cleanLines(input, list);
+
+        return this.joinLikeInput(list, lines.sort(naturalOrder));
+    }
+}
+
+export class ToCommaSeparatedTransformation extends BaseTransformation {
+    /**
+     * Transforms the input text into a comma-separated line.
+     * @param {string} input - The input text containing the list.
+     * @returns {string} - The comma-separated line.
+     */
+    transform(input: string): string {
+        const transformedLines = this.cleanLines(input);
+
+        return transformedLines.join(', ');
+    }
+}
+
+export class ToQuotedCommaSeparatedTransformation extends BaseTransformation {
+    /**
+     * Transforms the input text into a quoted, comma-separated line.
+     * @param {string} input - The input text containing the list.
+     * @returns {string} - The quoted, comma-separated line.
+     */
+    transform(input: string): string {
+        const transformedLines = this.cleanLines(input)
+            .map(line => `'${line}'`);
+        return transformedLines.join(', ');
+    }
+}
+
+export class CommaSeparatedToLinesTransformation extends BaseTransformation {
+    /**
+     * Transforms the input text from a comma-separated string into individual lines.
+     * @param {string} input - The input text containing the comma-separated values.
+     * @returns {string} - The text with values separated by new lines.
+     */
+    transform(input: string): string {
+        const isAlreadyLineSeparated = input.split(/\r?\n/).every(line =>
+            line.match(/^([^'",\r\n]+,?)$/)
+        );
+
+        if (isAlreadyLineSeparated) {
+            return input;
+        }
+
+        return this.tokens(input).map(item => item.trim()).filter(item => item !== '').join('\n');
     }
 }
 
@@ -204,16 +240,55 @@ export class ToSqlLikeTransformation extends BaseTransformation {
 }
 
 export class RemoveDuplicatesOnListTransformation extends BaseTransformation {
-    
+    private removedCount = 0;
+    private uniqueCount = 0;
+    private emptyDroppedFlag = false;
+    private duplicateValues: string[] = [];
+
+    get removed(): number {
+        return this.removedCount;
+    }
+
+    get unique(): number {
+        return this.uniqueCount;
+    }
+
+    get emptyDropped(): boolean {
+        return this.emptyDroppedFlag;
+    }
+
+    get duplicates(): readonly string[] {
+        return this.duplicateValues;
+    }
+
     /**
      * Transforms the input string by removing duplicate lines.
      * @param {string} input - The input string containing potential duplicate lines.
      * @returns {string} A string with duplicates removed, preserving the order of appearance.
      */
     transform(input: string): string {
-        const uniqueLines = new Set(this.cleanLines(input));
-        return Array.from(uniqueLines).join('\n');
+        const list = this.oneLineList(input);
+        const lines = this.cleanLines(input, list);
+        const counts = new Map<string, number>();
+        for (const line of lines) {
+            counts.set(line, (counts.get(line) ?? 0) + 1);
+        }
+        this.removedCount = lines.length - counts.size;
+        this.uniqueCount = counts.size;
+        this.duplicateValues = Array.from(counts).filter(([, count]) => count > 1).map(([value]) => value);
+        const rawLines = input.split(/\r?\n/);
+        // the empty line after a final line break is not a dropped line, or almost every whole-document run would report one
+        const rawCount = rawLines.length - (rawLines.at(-1) === '' ? 1 : 0);
+        // a one-line list has more values than lines, so only a blank line around it counts
+        this.emptyDroppedFlag = list ? rawCount > 1 : rawCount > lines.length;
+        return this.joinLikeInput(list, Array.from(counts.keys()));
     }
+}
+
+export function duplicateSummary({ removed, unique, emptyDropped, duplicates }: RemoveDuplicatesOnListTransformation): string {
+    // the toast turns [text](command:...) into a clickable link, and the values come from the file
+    const list = duplicates.join(', ').replaceAll('](', '] (');
+    return `Removed ${removed} ${removed === 1 ? 'duplicate' : 'duplicates'}, ${unique} ${unique === 1 ? 'unique value' : 'unique values'} left${emptyDropped ? ', empty lines dropped' : ''} | Duplicates: ${list}`;
 }
 
 /**
@@ -275,12 +350,52 @@ const commands: [string, (arg?: unknown) => TextTransformation | undefined | Pro
 ];
 
 export function activate(context: vscode.ExtensionContext) {
+    const snapshots = new Map<string, { text: string; version: number }>();
     for (const [id, factory] of commands) {
         context.subscriptions.push(vscode.commands.registerCommand(id, async (arg?: unknown) => {
             const transformation = await factory(arg);
-            return transformation && transformText(transformation);
+            const document = vscode.window.activeTextEditor?.document;
+            const entry = document && snapshots.get(document.uri.toString());
+            const chainStart = transformation && (entry && entry.version === document?.version ? entry.text : document?.getText());
+            const applied = transformation && await transformText(transformation);
+            if (applied === true && document && chainStart !== undefined) {
+                snapshots.set(document.uri.toString(), { text: chainStart, version: document.version });
+            }
+            if (applied === true && transformation instanceof RemoveDuplicatesOnListTransformation && transformation.removed > 0
+                && vscode.workspace.getConfiguration('listTransformation').get('removeDuplicates.showSummary') === true) {
+                // not awaited: the command resolves when the edit lands, not when the toast closes
+                void vscode.window.showInformationMessage(duplicateSummary(transformation));
+            }
+            return applied;
         }));
     }
+    context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(document => snapshots.delete(document.uri.toString())));
+    context.subscriptions.push(vscode.commands.registerCommand(restoreCommand, async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            void vscode.window.showInformationMessage('Nothing to restore.');
+            return;
+        }
+        const { document } = editor;
+        const key = document.uri.toString();
+        const entry = snapshots.get(key);
+        if (!entry || document.getText() === entry.text) {
+            snapshots.delete(key);
+            void vscode.window.showInformationMessage('Nothing to restore.');
+            return;
+        }
+        if (document.version !== entry.version && await vscode.window.showWarningMessage('The document was edited after the last transformation. Restore the original list?',
+            { modal: true, detail: 'Your edits since then will be lost. Undo brings them back.' }, 'Restore') !== 'Restore') {
+            return;
+        }
+        const restored = await editor.edit(editBuilder => {
+            editBuilder.replace(new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), entry.text);
+        });
+        if (restored) {
+            snapshots.delete(key);
+        }
+        return restored;
+    }));
 
     const manifest = context.extension.packageJSON as { contributes: { commands: { command: string; title: string }[] } };
     const titles = new Map(manifest.contributes.commands.map(({ command, title }) => [command, title]));

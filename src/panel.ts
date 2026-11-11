@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { randomBytes } from 'crypto';
 
 const sqlLikeCommand = 'extension.listToSqlLike';
+export const restoreCommand = 'extension.restoreOriginalList';
 export const dbTypes = ['mysql', 'sqlserver', 'pgsql', 'other'] as const;
 const conjunctions = ['AND', 'OR'] as const;
 
@@ -49,6 +50,14 @@ export function sqlLikeMessage(message: unknown): SqlLikeArgs | undefined {
     return command === sqlLikeCommand ? sqlLikeArgs(args) : undefined;
 }
 
+export function showSummaryMessage(message: unknown): boolean | undefined {
+    if (!isPlainObject(message) || !hasExactKeys(message, ['showSummary'])) {
+        return;
+    }
+    const value = (message as { showSummary?: unknown }).showSummary;
+    return typeof value === 'boolean' ? value : undefined;
+}
+
 export function paneLabel(title: string): string {
     return title.replace(/^LIST: /, '');
 }
@@ -72,7 +81,7 @@ const sqlLikeForm = `
                 <p class="sql-error" id="sql-error" aria-live="polite"></p>
             </div>`;
 
-export function panelHtml(webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>, media: vscode.Uri, buttons: readonly (readonly [string, string])[], numberKeysSetting: unknown): string {
+export function panelHtml(webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>, media: vscode.Uri, buttons: readonly (readonly [string, string])[], numberKeysSetting: unknown, showSummarySetting: unknown): string {
     // A workspace settings.json can hold any JSON value here, and it lands in the markup.
     const numberKeys = numberKeysSetting === true;
     const nonce = randomBytes(16).toString('base64');
@@ -84,6 +93,7 @@ export function panelHtml(webview: Pick<vscode.Webview, 'cspSource' | 'asWebview
         const expands = sqlLike ? ' aria-expanded="false" aria-controls="sql-form"' : '';
         return `        <li><button type="button" class="action" data-command="${escapeHtml(id)}"${key}${expands}>${kbd}<span class="label">${escapeHtml(paneLabel(title))}</span></button>${sqlLike ? sqlLikeForm : ''}</li>`;
     }).join('\n');
+    const summary = `\n    <p class="hint"><label class="choice"><input type="checkbox" id="show-summary"${showSummarySetting === true ? ' checked' : ''}>Enable duplicate notifications</label></p>`;
     const hint = numberKeys ? `\n    <p class="hint">Press 1–${buttons.length} to run, ↑ ↓ to move, Enter to run</p>` : '';
     return `<!DOCTYPE html>
 <html lang="en">
@@ -96,25 +106,26 @@ export function panelHtml(webview: Pick<vscode.Webview, 'cspSource' | 'asWebview
 <body data-number-keys="${numberKeys}">
     <ol class="actions" aria-label="Transformations">
 ${markup}
-    </ol>${hint}
+    </ol>
+    <button type="button" id="restore">Restore original</button>${summary}${hint}
     <script nonce="${nonce}" src="${webview.asWebviewUri(vscode.Uri.joinPath(media, 'panel.js')).toString()}"></script>
 </body>
 </html>`;
 }
 
 export function registerPanel(context: vscode.ExtensionContext, buttons: readonly (readonly [string, string])[]) {
-    const ids = buttons.map(([id]) => id);
+    const ids = [...buttons.map(([id]) => id), restoreCommand];
     const media = vscode.Uri.joinPath(context.extensionUri, 'media');
     context.subscriptions.push(vscode.window.registerWebviewViewProvider('listTransformation.panel', {
         resolveWebviewView(view) {
             const render = () => {
-                const numberKeys = vscode.workspace.getConfiguration('listTransformation').get<unknown>('panel.numberKeys', true);
-                view.webview.html = panelHtml(view.webview, media, buttons, numberKeys);
+                const config = vscode.workspace.getConfiguration('listTransformation');
+                view.webview.html = panelHtml(view.webview, media, buttons, config.get<unknown>('panel.numberKeys', true), config.get<unknown>('removeDuplicates.showSummary', true));
             };
             view.webview.options = { enableScripts: true, localResourceRoots: [media] };
             render();
             const listener = vscode.workspace.onDidChangeConfiguration(event => {
-                if (event.affectsConfiguration('listTransformation.panel')) {
+                if (event.affectsConfiguration('listTransformation')) {
                     render();
                 }
             });
@@ -130,6 +141,15 @@ export function registerPanel(context: vscode.ExtensionContext, buttons: readonl
                 const args = sqlLikeMessage(message);
                 if (args) {
                     void vscode.commands.executeCommand(sqlLikeCommand, args);
+                    return;
+                }
+                const showSummary = showSummaryMessage(message);
+                if (showSummary !== undefined) {
+                    void vscode.workspace.getConfiguration('listTransformation').update('removeDuplicates.showSummary', showSummary, vscode.ConfigurationTarget.Global)
+                        .then(undefined, (error: unknown) => {
+                            void vscode.window.showErrorMessage(`Could not save the duplicate notifications setting: ${error instanceof Error ? error.message : String(error)}`);
+                            render();
+                        });
                 }
             });
         },

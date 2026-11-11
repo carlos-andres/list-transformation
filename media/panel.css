@@ -84,6 +84,33 @@ body.vscode-dark .action {
     margin: 10px 2px 0;
 }
 
+#restore {
+    width: 100%;
+    margin-top: 10px;
+    padding: 7px 10px;
+    min-height: 32px;
+    border: 1px solid var(--vscode-contrastBorder, transparent);
+    border-radius: 6px;
+    font: inherit;
+    line-height: 1.35;
+    cursor: pointer;
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+}
+
+body.vscode-dark #restore {
+    border-color: var(--vscode-widget-border, color-mix(in srgb, var(--vscode-foreground) 14%, transparent));
+}
+
+#restore:hover {
+    background: var(--vscode-button-secondaryHoverBackground);
+}
+
+#restore:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: 1px;
+}
+
 .sql-form {
     display: grid;
     gap: 8px;

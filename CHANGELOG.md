@@ -2,6 +2,18 @@
 
 All notable changes to the "List Transformation" extension will be documented in this file.
 
+## [0.7.0] - 2026-11-11
+
+### Added
+
+- Remove Duplicates shows an Info message with the counts when it removes at least one duplicate, and the duplicated values, for example `Removed 2 duplicates, 20 unique values left | Duplicates: apple, banana`. The arrow on the message shows the whole list, which VS Code cuts at 1000 characters. Empty and lone-comma lines are not counted as duplicates; when the run drops any, the message adds `, empty lines dropped`. The message has no buttons, and the command still resolves when its edit lands. The output of every command is unchanged, except for a list on one line (see Fixed)
+- The setting `listTransformation.removeDuplicates.showSummary` (default `true`, user scope only) turns the message on or off, and a **Enable duplicate notifications** checkbox in the List pane changes it. The pane accepts only `{ showSummary: <boolean> }` from the checkbox
+- **LIST: Restore Original List** and a **Restore original** button in the List pane bring back the text from before the first transformation of the current chain, in one edit that Undo reverts. A hand edit followed by a transformation starts a new chain, and Restore asks first when the document was edited after the last transformation. The original lives in memory only, until the document closes
+
+### Fixed
+
+- A list on one line of values separated by a comma and a space, such as the output of Convert to Quoted Comma Separated Values, is read as its values in Order and Clean List, Convert to Quoted Comma Separated Values, Convert to Comma Separated Values, SQL LIKE and Remove Duplicates. Before, Remove Duplicates on `'apple', 'apple', 'banana'` removed nothing and returned `apple', 'apple', 'banana` with the outer quotes stripped. Order and Clean List and Remove Duplicates keep such a list on one line, quoted when every value was quoted with the same character, and the Remove Duplicates message counts its values. A comma without a space stays inside a value, so `1,000` is one value and `a,b,c` keeps its earlier output. A single quoted value such as `'Smith, John'`, and a line with only a trailing comma, are not read as a list. Blank lines around the one line are ignored, and a value that holds a comma and a space is written back in quotes
+
 ## [0.6.0] - 2026-11-10
 
 ### Added
